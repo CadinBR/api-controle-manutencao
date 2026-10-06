@@ -1,68 +1,43 @@
-const defeitosService = require('../services/defeitosService');
+const defeitosService = require('../services/defeitoService');
 
+// Padrão do projeto: o controller só chama o service e responde com res.json(status, dados).
+// Não precisa de try/catch nem de next: se o service lançar um erro (AppError),
+// o router captura e o errorHandler monta a resposta.
 class DefeitosController {
-  async criar(req, res, next) {
-    try {
-      const resultado = await defeitosService.criarDefeito(req.body);
-      return res.status(201).json(resultado);
-    } catch (err) {
-      next(err);
-    }
+  async criar(req, res) {
+    const resultado = await defeitosService.criarDefeito(req.body);
+    res.json(201, resultado);
   }
 
-  async listar(req, res, next) {
-    try {
-      const { severidade } = req.query;
-      const resultado = await defeitosService.listarDefeitos(severidade);
-      return res.status(200).json(resultado);
-    } catch (err) {
-      next(err);
-    }
+  async listar(req, res) {
+    const { severidade } = req.query;
+    const resultado = await defeitosService.listarDefeitos(severidade);
+    res.json(200, resultado);
   }
 
-  async listarCriticos(req, res, next) {
-    try {
-      const resultado = await defeitosService.listarCriticos();
-      return res.status(200).json(resultado);
-    } catch (err) {
-      next(err);
-    }
+  async listarCriticos(req, res) {
+    const resultado = await defeitosService.listarCriticos();
+    res.json(200, resultado);
   }
 
-  async buscarPorId(req, res, next) {
-    try {
-      const resultado = await defeitosService.buscarPorId(req.params.id);
-      return res.status(200).json(resultado);
-    } catch (err) {
-      next(err);
-    }
+  async buscarPorId(req, res) {
+    const resultado = await defeitosService.buscarPorId(req.params.id);
+    res.json(200, resultado);
   }
 
-  async listarPorEquipamento(req, res, next) {
-    try {
-      const resultado = await defeitosService.listarPorEquipamento(req.params.id);
-      return res.status(200).json(resultado);
-    } catch (err) {
-      next(err);
-    }
+  async listarPorEquipamento(req, res) {
+    const resultado = await defeitosService.listarPorEquipamento(req.params.id);
+    res.json(200, resultado);
   }
 
-  async atualizar(req, res, next) {
-    try {
-      const resultado = await defeitosService.atualizarDefeito(req.params.id, req.body);
-      return res.status(200).json(resultado);
-    } catch (err) {
-      next(err);
-    }
+  async atualizar(req, res) {
+    const resultado = await defeitosService.atualizarDefeito(req.params.id, req.body);
+    res.json(200, resultado);
   }
 
-  async deletar(req, res, next) {
-    try {
-      await defeitosService.deletarDefeito(req.params.id);
-      return res.status(204).send();
-    } catch (err) {
-      next(err);
-    }
+  async deletar(req, res) {
+    await defeitosService.deletarDefeito(req.params.id);
+    res.json(204); // sem corpo
   }
 }
 

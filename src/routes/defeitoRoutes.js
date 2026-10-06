@@ -1,13 +1,11 @@
-const express = require('express');
-const router = express.Router();
-const defeitosController = require('../controllers/defeitosController');
+const defeitosController = require('../controllers/defeitoController');
 
-router.post('/defeitos', (req, res, next) => defeitosController.criar(req, res, next));
-router.get('/defeitos', (req, res, next) => defeitosController.listar(req, res, next));
-router.get('/defeitos/criticos', (req, res, next) => defeitosController.listarCriticos(req, res, next));
-router.get('/defeitos/:id', (req, res, next) => defeitosController.buscarPorId(req, res, next));
-router.get('/equipamentos/:id/defeitos', (req, res, next) => defeitosController.listarPorEquipamento(req, res, next));
-router.put('/defeitos/:id', (req, res, next) => defeitosController.atualizar(req, res, next));
-router.delete('/defeitos/:id', (req, res, next) => defeitosController.deletar(req, res, next));
-
-module.exports = router;
+module.exports = function registrarDefeito(router) {
+  router.post('/api/defeitos', (req, res) => defeitosController.criar(req, res));
+  router.get('/api/defeitos', (req, res) => defeitosController.listar(req, res));
+  router.get('/api/defeitos/criticos', (req, res) => defeitosController.listarCriticos(req, res)); // antes do :id
+  router.get('/api/defeitos/:id', (req, res) => defeitosController.buscarPorId(req, res));
+  router.get('/api/equipamentos/:id/defeitos', (req, res) => defeitosController.listarPorEquipamento(req, res));
+  router.put('/api/defeitos/:id', (req, res) => defeitosController.atualizar(req, res));
+  router.delete('/api/defeitos/:id', (req, res) => defeitosController.deletar(req, res));
+};

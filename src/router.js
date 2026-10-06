@@ -1,15 +1,17 @@
 const AppError = require('./errors/AppError');
 const { tratarErro } = require('./middlewares/errorHandler');
 
+// Lista de rotas registradas. Cada rota tem: método, regex do caminho e a função (handler).
 const rotas = [];
 
 function adicionar(metodo, caminho, handler) {
+  // "/api/equipamentos/:id" vira a regex /^\/api\/equipamentos\/([^/]+)$/
   const regex = new RegExp('^' + caminho.replace(/:\w+/g, '([^/]+)') + '$');
   const nomes = (caminho.match(/:\w+/g) || []).map((n) => n.slice(1)); // ["id"]
   rotas.push({ metodo, regex, nomes, handler });
 }
 
-
+// O corpo da requisição chega em pedaços; juntamos tudo e convertemos de JSON para objeto.
 function lerBody(req) {
   return new Promise((resolve, reject) => {
     let texto = '';
@@ -26,6 +28,7 @@ function lerBody(req) {
 }
 
 async function tratar(req, res) {
+  // atalho para responder em JSON: res.json(200, dados)
   res.json = (status, dados) => {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(dados === undefined ? undefined : JSON.stringify(dados));
@@ -47,7 +50,9 @@ async function tratar(req, res) {
       req.params = {};
       rota.nomes.forEach((nome, i) => (req.params[nome] = encontrado[i + 1]));
       req.query = Object.fromEntries(url.searchParams);
-      req.body = req.method === 'POST' || req.method === 'PUT' ? await lerBody(req) : {};
+
+      const temBody = ['POST', 'PUT', 'PATCH'].includes(req.method);
+      req.body = temBody ? await lerBody(req) : {};
 
       return await rota.handler(req, res);
     }
@@ -58,10 +63,14 @@ async function tratar(req, res) {
     tratarErro(err, res);
   }
 }
+
+// ATENÇÃO: as rotas são testadas na ordem em que foram registradas.
+// Rotas fixas (/em-manutencao, /criticos) devem vir ANTES das rotas com :id.
 module.exports = {
   get: (caminho, handler) => adicionar('GET', caminho, handler),
   post: (caminho, handler) => adicionar('POST', caminho, handler),
   put: (caminho, handler) => adicionar('PUT', caminho, handler),
+  patch: (caminho, handler) => adicionar('PATCH', caminho, handler),
   delete: (caminho, handler) => adicionar('DELETE', caminho, handler),
   tratar,
 };

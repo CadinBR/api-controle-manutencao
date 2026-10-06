@@ -1,2 +1,2 @@
-module.exports = function registrar(router) {
-};
+    module.exports = function registrar(router) {
+    };

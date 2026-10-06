@@ -1,0 +1,13 @@
+{
+  "defeitos": [
+    {
+      "id": 1,
+      "equipamentoId": 2,
+      "descricao": "Vazamento de óleo no motor",
+      "severidade": "CRITICO",
+      "dataRegistro": "2026-10-05",
+      "prioridade": "MAXIMA"
+    }
+  ],
+  "equipamentos": []
+}
