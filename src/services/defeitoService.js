@@ -2,72 +2,45 @@ const defeitosRepository = require('../repositories/defeitoRepository');
 const equipamentosRepository = require('../repositories/equipamentoRepository');
 const AppError = require('../errors/AppError');
 const Defeito = require('../models/defeito');
+const { validarId, textoPreenchido, ausente } = require('../utils/validacoes');
 
 const SEVERIDADES_VALIDAS = ['BAIXO', 'MEDIO', 'ALTO', 'CRITICO'];
 
-const PESO_SEVERIDADE = {
-  CRITICO: 4,
-  ALTO: 3,
-  MEDIO: 2,
-  BAIXO: 1
-};
+const PESO_SEVERIDADE = { CRITICO: 4, ALTO: 3, MEDIO: 2, BAIXO: 1 };
+
+function normalizarSeveridade(valor) {
+  return typeof valor === 'string' ? valor.trim().toUpperCase() : '';
+}
 
 class DefeitosService {
 
   async criarDefeito(dados) {
     if (!dados || typeof dados !== 'object') {
-      throw new AppError('Dados da requisição são obrigatórios', 400);
+      throw new AppError(400, 'Dados da requisição são obrigatórios');
     }
 
     const erros = [];
 
-    if (!dados.equipamentoId) {
-      erros.push('equipamentoId é obrigatório');
-    }
+    if (ausente(dados.equipamentoId)) erros.push('equipamentoId é obrigatório');
 
-    if (!dados.descricao || dados.descricao.trim() === '') {
-      erros.push('descricao é obrigatória');
-    }
+    if (!textoPreenchido(dados.descricao)) erros.push('descricao é obrigatória');
+    else if (dados.descricao.trim().length > 255) erros.push('descricao deve ter no máximo 255 caracteres');
 
-    if (!dados.severidade) {
-      erros.push('severidade é obrigatória');
-    }
-
-    const severidadeUpper = dados.severidade
-      ? dados.severidade.toUpperCase()
-      : null;
-
-    if (
-      severidadeUpper &&
-      !SEVERIDADES_VALIDAS.includes(severidadeUpper)
-    ) {
-      erros.push(
-        `severidade deve ser uma das seguintes: ${SEVERIDADES_VALIDAS.join(', ')}`
-      );
+    const severidade = normalizarSeveridade(dados.severidade);
+    if (ausente(dados.severidade)) erros.push('severidade é obrigatória');
+    else if (!SEVERIDADES_VALIDAS.includes(severidade)) {
+      erros.push(`severidade deve ser uma das seguintes: ${SEVERIDADES_VALIDAS.join(', ')}`);
     }
 
     if (erros.length > 0) {
-      throw new AppError(
-        'Campos obrigatórios ausentes ou valores inválidos',
-        400,
-        erros
-      );
+      throw new AppError(400, 'Campos obrigatórios ausentes ou valores inválidos', erros);
     }
 
-    const equipamento = await equipamentosRepository.buscarPorId(
-      dados.equipamentoId
-    );
+    const equipamentoId = validarId(dados.equipamentoId, 'equipamentoId');
+    const equipamento = await equipamentosRepository.buscarPorId(equipamentoId);
+    if (!equipamento) throw new AppError(404, 'Equipamento não encontrado');
 
-    if (!equipamento) {
-      throw new AppError('Equipamento não encontrado', 404);
-    }
-
-    const novoDefeito = new Defeito({
-      equipamentoId: dados.equipamentoId,
-      descricao: dados.descricao.trim(),
-      severidade: severidadeUpper
-    });
-
+    const novoDefeito = new Defeito({ equipamentoId, descricao: dados.descricao.trim(), severidade });
     const criado = await defeitosRepository.create(novoDefeito);
 
     return new Defeito(criado).toJSON();
@@ -77,147 +50,85 @@ class DefeitosService {
     let lista = await defeitosRepository.findAll();
 
     if (filtroSeveridade) {
-      const filtroUpper = filtroSeveridade.toUpperCase();
-
-      lista = lista.filter(
-        (d) => d.severidade === filtroUpper
-      );
+      const filtro = normalizarSeveridade(filtroSeveridade);
+      lista = lista.filter((d) => d.severidade === filtro);
     }
 
-    lista.sort(
-      (a, b) =>
-        (PESO_SEVERIDADE[b.severidade] || 0) -
-        (PESO_SEVERIDADE[a.severidade] || 0)
-    );
+    // Problema 5: os mais graves aparecem primeiro
+    lista.sort((a, b) => (PESO_SEVERIDADE[b.severidade] || 0) - (PESO_SEVERIDADE[a.severidade] || 0));
 
-    return lista.map(
-      (d) => new Defeito(d).toJSON()
-    );
+    return lista.map((d) => new Defeito(d).toJSON());
   }
 
   async listarCriticos() {
     const lista = await defeitosRepository.findAll();
-
-    return lista
-      .filter((d) => d.severidade === 'CRITICO')
-      .map((d) => new Defeito(d).toJSON());
+    return lista.filter((d) => d.severidade === 'CRITICO').map((d) => new Defeito(d).toJSON());
   }
 
   async buscarPorId(id) {
-    const numId = Number(id);
-
-    if (isNaN(numId)) {
-      throw new AppError('ID inválido', 400);
-    }
-
-    const defeito = await defeitosRepository.findById(numId);
-
-    if (!defeito) {
-      throw new AppError('Defeito não encontrado', 404);
-    }
-
+    const defeito = await defeitosRepository.findById(validarId(id));
+    if (!defeito) throw new AppError(404, 'Defeito não encontrado');
     return new Defeito(defeito).toJSON();
   }
 
   async listarPorEquipamento(equipamentoId) {
-    const numId = Number(equipamentoId);
+    const numId = validarId(equipamentoId);
 
-    if (isNaN(numId)) {
-      throw new AppError('ID inválido', 400);
-    }
+    const equipamento = await equipamentosRepository.buscarPorId(numId);
+    if (!equipamento) throw new AppError(404, 'Equipamento não encontrado');
 
-    const equipamento =
-      await equipamentosRepository.buscarPorId(numId);
-
-    if (!equipamento) {
-      throw new AppError('Equipamento não encontrado', 404);
-    }
-
-    const defeitos =
-      await defeitosRepository.findByEquipamentoId(numId);
-
-    return defeitos.map(
-      (d) => new Defeito(d).toJSON()
-    );
+    const defeitos = await defeitosRepository.findByEquipamentoId(numId);
+    return defeitos.map((d) => new Defeito(d).toJSON());
   }
 
   async atualizarDefeito(id, dados) {
-    const numId = Number(id);
-
-    if (isNaN(numId)) {
-      throw new AppError('ID inválido', 400);
-    }
+    const numId = validarId(id);
 
     if (!dados || typeof dados !== 'object') {
-      throw new AppError(
-        'Dados da requisição são obrigatórios',
-        400
-      );
+      throw new AppError(400, 'Dados da requisição são obrigatórios');
     }
 
-    const defeitoExistente =
-      await defeitosRepository.findById(numId);
+    const existente = await defeitosRepository.findById(numId);
+    if (!existente) throw new AppError(404, 'Defeito não encontrado');
 
-    if (!defeitoExistente) {
-      throw new AppError('Defeito não encontrado', 404);
+    const novo = {
+      equipamentoId: existente.equipamentoId,
+      descricao: existente.descricao,
+      severidade: existente.severidade
+    };
+
+    if (dados.equipamentoId !== undefined) {
+      novo.equipamentoId = validarId(dados.equipamentoId, 'equipamentoId');
+      const equipamento = await equipamentosRepository.buscarPorId(novo.equipamentoId);
+      if (!equipamento) throw new AppError(404, 'Equipamento não encontrado');
     }
 
-    if (dados.equipamentoId) {
-      const equip =
-        await equipamentosRepository.buscarPorId(
-          dados.equipamentoId
-        );
-
-      if (!equip) {
-        throw new AppError(
-          'Equipamento não encontrado',
-          404
-        );
+    if (dados.descricao !== undefined) {
+      if (!textoPreenchido(dados.descricao) || dados.descricao.trim().length > 255) {
+        throw new AppError(400, 'descricao deve ser um texto de 1 a 255 caracteres');
       }
+      novo.descricao = dados.descricao.trim();
     }
 
-    if (dados.severidade) {
-      dados.severidade =
-        dados.severidade.toUpperCase();
-
-      if (
-        !SEVERIDADES_VALIDAS.includes(
-          dados.severidade
-        )
-      ) {
-        throw new AppError(
-          'Severidade inválida',
-          400,
-          SEVERIDADES_VALIDAS
-        );
+    if (dados.severidade !== undefined) {
+      const severidade = normalizarSeveridade(dados.severidade);
+      if (!SEVERIDADES_VALIDAS.includes(severidade)) {
+        throw new AppError(400, 'Severidade inválida', SEVERIDADES_VALIDAS);
       }
+      novo.severidade = severidade;
     }
 
-    const atualizado =
-      await defeitosRepository.update(numId, dados);
-
+    const atualizado = await defeitosRepository.update(numId, novo);
     return new Defeito(atualizado).toJSON();
   }
 
   async deletarDefeito(id) {
-    const numId = Number(id);
+    const numId = validarId(id);
 
-    if (isNaN(numId)) {
-      throw new AppError('ID inválido', 400);
-    }
-
-    const defeito =
-      await defeitosRepository.findById(numId);
-
-    if (!defeito) {
-      throw new AppError(
-        'Defeito não encontrado',
-        404
-      );
-    }
+    const defeito = await defeitosRepository.findById(numId);
+    if (!defeito) throw new AppError(404, 'Defeito não encontrado');
 
     await defeitosRepository.delete(numId);
-
     return true;
   }
 }

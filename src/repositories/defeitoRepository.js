@@ -1,70 +1,41 @@
-// Exemplo usando array ou lendo/gravando no db.json/db.js
-const fs = require('fs');
-const path = require('path');
+const db = require('../config/db');
 
-const DB_PATH = path.resolve(__dirname, '../config/db.json');
-
-function lerBanco() {
-  if (!fs.existsSync(DB_PATH)) {
-    return { defeitos: [], equipamentos: [] };
-  }
-  const raw = fs.readFileSync(DB_PATH, 'utf-8');
-  return JSON.parse(raw);
-}
-
-function salvarBanco(dados) {
-  fs.writeFileSync(DB_PATH, JSON.stringify(dados, null, 2), 'utf-8');
-}
-
+// Defeitos agora ficam na tabela "defeitos" do MySQL, como os demais módulos.
 class DefeitosRepository {
   async findAll() {
-    const db = lerBanco();
-    return db.defeitos || [];
+    const [linhas] = await db.query('SELECT * FROM defeitos ORDER BY id');
+    return linhas;
   }
 
   async findById(id) {
-    const db = lerBanco();
-    return (db.defeitos || []).find((d) => d.id === Number(id)) || null;
+    const [linhas] = await db.query('SELECT * FROM defeitos WHERE id = ?', [id]);
+    return linhas[0] || null;
   }
 
   async findByEquipamentoId(equipamentoId) {
-    const db = lerBanco();
-    return (db.defeitos || []).filter((d) => d.equipamentoId === Number(equipamentoId));
+    const [linhas] = await db.query('SELECT * FROM defeitos WHERE equipamentoId = ? ORDER BY id', [equipamentoId]);
+    return linhas;
   }
 
   async create(defeito) {
-    const db = lerBanco();
-    db.defeitos = db.defeitos || [];
-    
-    // Auto-incremento de ID
-    const nextId = db.defeitos.length > 0 
-      ? Math.max(...db.defeitos.map((d) => d.id)) + 1 
-      : 1;
-
-    defeito.id = nextId;
-    db.defeitos.push(defeito);
-    salvarBanco(db);
-    return defeito;
+    const [resultado] = await db.query(
+      'INSERT INTO defeitos (equipamentoId, descricao, severidade, dataRegistro) VALUES (?, ?, ?, ?)',
+      [defeito.equipamentoId, defeito.descricao, defeito.severidade, defeito.dataRegistro]
+    );
+    return this.findById(resultado.insertId);
   }
 
-  async update(id, dadosAtualizados) {
-    const db = lerBanco();
-    const index = (db.defeitos || []).findIndex((d) => d.id === Number(id));
-    if (index === -1) return null;
-
-    db.defeitos[index] = { ...db.defeitos[index], ...dadosAtualizados, id: Number(id) };
-    salvarBanco(db);
-    return db.defeitos[index];
+  async update(id, dados) {
+    await db.query(
+      'UPDATE defeitos SET equipamentoId = ?, descricao = ?, severidade = ? WHERE id = ?',
+      [dados.equipamentoId, dados.descricao, dados.severidade, id]
+    );
+    return this.findById(id);
   }
 
   async delete(id) {
-    const db = lerBanco();
-    const index = (db.defeitos || []).findIndex((d) => d.id === Number(id));
-    if (index === -1) return false;
-
-    db.defeitos.splice(index, 1);
-    salvarBanco(db);
-    return true;
+    const [resultado] = await db.query('DELETE FROM defeitos WHERE id = ?', [id]);
+    return resultado.affectedRows > 0;
   }
 }
 

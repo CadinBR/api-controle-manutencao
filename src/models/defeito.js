@@ -1,10 +1,12 @@
+const { hojeISO } = require('../utils/validacoes');
+
 class Defeito {
   constructor({ id, equipamentoId, descricao, severidade, dataRegistro }) {
     this.id = Number(id);
     this.equipamentoId = Number(equipamentoId);
     this.descricao = descricao;
     this.severidade = severidade ? severidade.toUpperCase() : severidade;
-    this.dataRegistro = dataRegistro || new Date().toISOString();
+    this.dataRegistro = dataRegistro || hojeISO();
   }
 
   toJSON() {

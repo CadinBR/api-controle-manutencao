@@ -1,0 +1,3338 @@
+{
+  "info": {
+    "_postman_id": "a8e0f271-2f74-45b8-82a4-5fc034f84020",
+    "name": "API de Controle de Manutenção Industrial - NP1",
+    "description": "Coleção de testes da API. Rode as pastas em ordem (Collection Runner): cada requisição guarda os IDs criados em variáveis para as seguintes. Cobre os CRUDs, as regras de negócio, o tratamento de erros e os 8 problemas da NP1 (procure por \"Problema N\" nos nomes). Pré-requisito: API rodando em http://localhost:3000 (altere a variável baseUrl se necessário).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Datas dinâmicas usadas nos corpos e nos testes (formato AAAA-MM-DD, fuso local)",
+          "const f = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');",
+          "const h = new Date();",
+          "const o = new Date(h); o.setDate(o.getDate() - 1);",
+          "pm.collectionVariables.set('hoje', f(h));",
+          "pm.collectionVariables.set('ontem', f(o));"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Equipamentos",
+      "description": "CRUD de equipamentos, validações e Problema 1 (corrigir cadastro).",
+      "item": [
+        {
+          "name": "Criar equipamento",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipamentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipamentos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Torno CNC\",\n  \"modelo\": \"T-500\",\n  \"fabricante\": \"Romi\",\n  \"dataInstalacao\": \"2024-01-10\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Nasce ATIVO\", () => { pm.expect(j.status).to.eql(\"ATIVO\"); });",
+                  "pm.collectionVariables.set(\"eqId\", j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar equipamento - campos obrigatórios ausentes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipamentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipamentos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Prensa\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(400); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });",
+                  "pm.test(\"Lista os campos faltando\", () => { pm.expect(j.detalhes.length).to.be.above(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar equipamento - data inválida",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipamentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipamentos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Torno CNC\",\n  \"modelo\": \"T-500\",\n  \"fabricante\": \"Romi\",\n  \"dataInstalacao\": \"2024-13-45\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(400); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar equipamentos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipamentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipamentos"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Contém o equipamento criado\", () => { pm.expect(j.some(e => e.id === Number(pm.collectionVariables.get(\"eqId\")))).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar equipamentos filtrando por status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipamentos?status=ativo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipamentos"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "ativo"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Todos ATIVO\", () => { pm.expect(j.every(e => e.status === \"ATIVO\")).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar equipamento por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipamentos/{{eqId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipamentos",
+                "{{eqId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Retorna o equipamento\", () => { pm.expect(j.id).to.eql(Number(pm.collectionVariables.get(\"eqId\"))); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar equipamento - ID inválido",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipamentos/abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipamentos",
+                "abc"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(400); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar equipamento - inexistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipamentos/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipamentos",
+                "999999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(404); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Problema 1 - Corrigir equipamento cadastrado errado (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipamentos/{{eqId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipamentos",
+                "{{eqId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Torno CNC Atualizado\",\n  \"modelo\": \"T-600\",\n  \"fabricante\": \"Romi\",\n  \"dataInstalacao\": \"2024-01-10\",\n  \"status\": \"ATIVO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Dados corrigidos\", () => { pm.expect(j.nome).to.eql(\"Torno CNC Atualizado\"); pm.expect(j.modelo).to.eql(\"T-600\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar equipamento - body incompleto",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipamentos/{{eqId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipamentos",
+                "{{eqId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"So o nome\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(400); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar equipamento para exclusão",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipamentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipamentos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Esteira Descartável\",\n  \"modelo\": \"T-500\",\n  \"fabricante\": \"Romi\",\n  \"dataInstalacao\": \"2024-01-10\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set(\"eq2Id\", j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir equipamento sem vínculos",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipamentos/{{eq2Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipamentos",
+                "{{eq2Id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar equipamento excluído",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipamentos/{{eq2Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipamentos",
+                "{{eq2Id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(404); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar equipamento INATIVO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipamentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipamentos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Furadeira Antiga\",\n  \"modelo\": \"T-500\",\n  \"fabricante\": \"Romi\",\n  \"dataInstalacao\": \"2024-01-10\",\n  \"status\": \"INATIVO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Status INATIVO\", () => { pm.expect(j.status).to.eql(\"INATIVO\"); });",
+                  "pm.collectionVariables.set(\"eqInativoId\", j.id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Ordens de Serviço",
+      "description": "Abertura, edição e andamento de OS. Problemas 2 e 7. Atenção: rotas sem o prefixo /api.",
+      "item": [
+        {
+          "name": "Problema 2 - Abrir OS para equipamento inexistente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ordens-servico",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ordens-servico"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"equipamentoId\": 999999,\n  \"tipo\": \"CORRETIVA\",\n  \"responsavel\": \"João\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(404); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Abrir OS - campos obrigatórios ausentes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ordens-servico",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ordens-servico"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"equipamentoId\": \"{{eqId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(400); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Abrir OS - tipo inválido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ordens-servico",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ordens-servico"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"equipamentoId\": {{eqId}}, \"tipo\": \"URGENTE\", \"responsavel\": \"João\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(400); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Abrir OS - equipamento INATIVO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ordens-servico",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ordens-servico"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"equipamentoId\": {{eqInativoId}}, \"tipo\": \"CORRETIVA\", \"responsavel\": \"João\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422\", () => pm.response.to.have.status(422));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(422); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Abrir OS corretiva",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ordens-servico",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ordens-servico"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"equipamentoId\": {{eqId}}, \"tipo\": \"CORRETIVA\", \"responsavel\": \"João Silva\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Status ABERTA e sem conclusão\", () => { pm.expect(j.status).to.eql(\"ABERTA\"); pm.expect(j.dataConclusao).to.be.null; });",
+                  "pm.test(\"Data de abertura é hoje\", () => { pm.expect(j.dataAbertura).to.eql(pm.collectionVariables.get(\"hoje\")); });",
+                  "pm.collectionVariables.set(\"osId\", j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Problema 7 - Listar equipamentos em manutenção",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipamentos/em-manutencao",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipamentos",
+                "em-manutencao"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Todos EM_MANUTENCAO\", () => { pm.expect(j.every(e => e.status === \"EM_MANUTENCAO\")).to.be.true; });",
+                  "pm.test(\"Inclui o equipamento da OS aberta\", () => { pm.expect(j.some(e => e.id === Number(pm.collectionVariables.get(\"eqId\")))).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar ordens de serviço",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ordens-servico",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ordens-servico"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"É uma lista\", () => { pm.expect(j).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar OS por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ordens-servico/{{osId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ordens-servico",
+                "{{osId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Retorna a OS\", () => { pm.expect(j.id).to.eql(Number(pm.collectionVariables.get(\"osId\"))); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar OS - ID inválido",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ordens-servico/abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ordens-servico",
+                "abc"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(400); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar OS - inexistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ordens-servico/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ordens-servico",
+                "999999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(404); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar OS (PUT parcial)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ordens-servico/{{osId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ordens-servico",
+                "{{osId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"responsavel\": \"Maria Souza\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Responsável alterado, status mantido\", () => { pm.expect(j.responsavel).to.eql(\"Maria Souza\"); pm.expect(j.status).to.eql(\"ABERTA\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar OS - tentativa de mudar o status é ignorada",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ordens-servico/{{osId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ordens-servico",
+                "{{osId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"FINALIZADA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Status continua ABERTA\", () => { pm.expect(j.status).to.eql(\"ABERTA\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Iniciar OS",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ordens-servico/{{osId}}/iniciar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ordens-servico",
+                "{{osId}}",
+                "iniciar"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"EM_ANDAMENTO\", () => { pm.expect(j.status).to.eql(\"EM_ANDAMENTO\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Defeitos",
+      "description": "Registro de defeitos e Problema 5 (destaque de defeito crítico).",
+      "item": [
+        {
+          "name": "Problema 5 - Registrar defeito CRÍTICO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/defeitos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "defeitos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"equipamentoId\": {{eqId}}, \"descricao\": \"Vazamento de óleo no motor\", \"severidade\": \"critico\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Severidade normalizada\", () => { pm.expect(j.severidade).to.eql(\"CRITICO\"); });",
+                  "pm.test(\"Prioridade MAXIMA\", () => { pm.expect(j.prioridade).to.eql(\"MAXIMA\"); });",
+                  "pm.test(\"Data de registro é hoje\", () => { pm.expect(j.dataRegistro).to.eql(pm.collectionVariables.get(\"hoje\")); });",
+                  "pm.collectionVariables.set(\"defId\", j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar defeito BAIXO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/defeitos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "defeitos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"equipamentoId\": {{eqId}}, \"descricao\": \"Pintura desgastada\", \"severidade\": \"BAIXO\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Prioridade NORMAL\", () => { pm.expect(j.prioridade).to.eql(\"NORMAL\"); });",
+                  "pm.collectionVariables.set(\"defBaixoId\", j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar defeito - campos ausentes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/defeitos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "defeitos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"equipamentoId\": {{eqId}} }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(400); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar defeito - severidade inválida",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/defeitos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "defeitos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"equipamentoId\": {{eqId}}, \"descricao\": \"x\", \"severidade\": \"ENORME\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(400); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar defeito - equipamento inexistente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/defeitos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "defeitos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"equipamentoId\": 999999,\n  \"descricao\": \"x\",\n  \"severidade\": \"ALTO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(404); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar defeitos (ordenados por severidade)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/defeitos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "defeitos"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Crítico vem primeiro\", () => { pm.expect(j[0].severidade).to.eql(\"CRITICO\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar apenas defeitos críticos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/defeitos/criticos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "defeitos",
+                "criticos"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Todos CRITICO com prioridade MAXIMA\", () => { pm.expect(j.every(d => d.severidade === \"CRITICO\" && d.prioridade === \"MAXIMA\")).to.be.true; });",
+                  "pm.test(\"Inclui o defeito registrado\", () => { pm.expect(j.some(d => d.id === Number(pm.collectionVariables.get(\"defId\")))).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar defeitos filtrando por severidade",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/defeitos?severidade=baixo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "defeitos"
+              ],
+              "query": [
+                {
+                  "key": "severidade",
+                  "value": "baixo"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Todos BAIXO\", () => { pm.expect(j.every(d => d.severidade === \"BAIXO\")).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar defeito por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/defeitos/{{defId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "defeitos",
+                "{{defId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar defeito - ID inválido",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/defeitos/abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "defeitos",
+                "abc"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(400); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar defeito - inexistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/defeitos/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "defeitos",
+                "999999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(404); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar defeitos de um equipamento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipamentos/{{eqId}}/defeitos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipamentos",
+                "{{eqId}}",
+                "defeitos"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Todos do equipamento\", () => { pm.expect(j.length).to.be.at.least(2); pm.expect(j.every(d => d.equipamentoId === Number(pm.collectionVariables.get(\"eqId\")))).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar defeito (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/defeitos/{{defBaixoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "defeitos",
+                "{{defBaixoId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"severidade\": \"ALTO\",\n  \"descricao\": \"Ruído anormal no eixo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Atualizado\", () => { pm.expect(j.severidade).to.eql(\"ALTO\"); pm.expect(j.prioridade).to.eql(\"NORMAL\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar defeito - severidade inválida",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/defeitos/{{defBaixoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "defeitos",
+                "{{defBaixoId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"severidade\": \"ENORME\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(400); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir defeito",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/defeitos/{{defBaixoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "defeitos",
+                "{{defBaixoId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar defeito excluído",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/defeitos/{{defBaixoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "defeitos",
+                "{{defBaixoId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(404); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Peças Substituídas",
+      "description": "Peças lançadas na OS em andamento. Problemas 4 e 8.",
+      "item": [
+        {
+          "name": "Lançar peça na OS",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pecas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pecas"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"ordemServicoId\": {{osId}}, \"nome\": \"Rolamento 6204\", \"codigo\": \"R-6204\", \"quantidade\": 2, \"custoUnitario\": 10.5 }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Peça criada\", () => { pm.expect(j.nome).to.eql(\"Rolamento 6204\"); pm.expect(j.quantidade).to.eql(2); });",
+                  "pm.collectionVariables.set(\"pecaId\", j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lançar a mesma peça novamente (outra troca)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pecas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pecas"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"ordemServicoId\": {{osId}}, \"nome\": \"Rolamento 6204\", \"codigo\": \"R-6204\", \"quantidade\": 1, \"custoUnitario\": 12.5 }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set(\"peca2Id\", j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lançar peça - quantidade inválida",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pecas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pecas"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"ordemServicoId\": {{osId}}, \"nome\": \"Correia\", \"codigo\": \"C-1\", \"quantidade\": 0, \"custoUnitario\": 5 }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(400); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lançar peça - campos ausentes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pecas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pecas"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(400); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lançar peça - OS inexistente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pecas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pecas"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ordemServicoId\": 999999,\n  \"nome\": \"Correia\",\n  \"codigo\": \"C-1\",\n  \"quantidade\": 1,\n  \"custoUnitario\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(404); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar peças",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pecas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pecas"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"É uma lista\", () => { pm.expect(j).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar peças filtrando por código",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pecas?codigo=R-6204",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pecas"
+              ],
+              "query": [
+                {
+                  "key": "codigo",
+                  "value": "R-6204"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Todas do código\", () => { pm.expect(j.length).to.be.at.least(2); pm.expect(j.every(p => p.codigo === \"R-6204\")).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Problema 4 - Histórico de uma peça por código",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pecas/historico?codigo=R-6204",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pecas",
+                "historico"
+              ],
+              "query": [
+                {
+                  "key": "codigo",
+                  "value": "R-6204"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Várias trocas registradas\", () => { pm.expect(j.length).to.be.at.least(2); });",
+                  "pm.test(\"Traz equipamento e data da OS\", () => { pm.expect(j[0]).to.have.property(\"equipamentoId\"); pm.expect(j[0]).to.have.property(\"dataAbertura\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Histórico - sem informar o código",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pecas/historico",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pecas",
+                "historico"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(400); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar peça por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pecas/{{pecaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pecas",
+                "{{pecaId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar peça - ID inválido",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pecas/abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pecas",
+                "abc"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(400); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar peça - inexistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pecas/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pecas",
+                "999999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(404); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar peça (PUT parcial)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pecas/{{pecaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pecas",
+                "{{pecaId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Rolamento 6204 reforçado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Nome alterado, quantidade mantida\", () => { pm.expect(j.nome).to.eql(\"Rolamento 6204 reforçado\"); pm.expect(j.quantidade).to.eql(2); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Problema 8 - Custo total das peças da OS",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/ordens-servico/{{osId}}/custo-total",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ordens-servico",
+                "{{osId}}",
+                "custo-total"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"2 x 10,50 + 1 x 12,50 = 33,50\", () => { pm.expect(j.custoTotal).to.eql(33.5); });",
+                  "pm.test(\"Lista as peças\", () => { pm.expect(j.pecas.length).to.eql(2); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir peça",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pecas/{{peca2Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pecas",
+                "{{peca2Id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Mensagem de sucesso\", () => { pm.expect(j.mensagem).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar peça excluída",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pecas/{{peca2Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pecas",
+                "{{peca2Id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(404); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Custo total após excluir uma peça",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/ordens-servico/{{osId}}/custo-total",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ordens-servico",
+                "{{osId}}",
+                "custo-total"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"2 x 10,50 = 21\", () => { pm.expect(j.custoTotal).to.eql(21); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Custo total - OS inexistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/ordens-servico/999999/custo-total",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ordens-servico",
+                "999999",
+                "custo-total"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(404); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Finalização da OS e regras de bloqueio",
+      "description": "OS finalizada não aceita alterações. Problema 6 (excluir equipamento com vínculos).",
+      "item": [
+        {
+          "name": "Finalizar OS",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ordens-servico/{{osId}}/finalizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ordens-servico",
+                "{{osId}}",
+                "finalizar"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"FINALIZADA com data de conclusão de hoje\", () => { pm.expect(j.status).to.eql(\"FINALIZADA\"); pm.expect(j.dataConclusao).to.eql(pm.collectionVariables.get(\"hoje\")); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Equipamento voltou para ATIVO",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipamentos/{{eqId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipamentos",
+                "{{eqId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"ATIVO\", () => { pm.expect(j.status).to.eql(\"ATIVO\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Data de conclusão foi gravada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ordens-servico/{{osId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ordens-servico",
+                "{{osId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"dataConclusao preenchida\", () => { pm.expect(j.dataConclusao).to.eql(pm.collectionVariables.get(\"hoje\")); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Finalizar OS já finalizada",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ordens-servico/{{osId}}/finalizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ordens-servico",
+                "{{osId}}",
+                "finalizar"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(409); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Iniciar OS finalizada",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ordens-servico/{{osId}}/iniciar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ordens-servico",
+                "{{osId}}",
+                "iniciar"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(409); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar OS finalizada",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ordens-servico/{{osId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ordens-servico",
+                "{{osId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"responsavel\": \"Outro\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(409); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir OS finalizada",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ordens-servico/{{osId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ordens-servico",
+                "{{osId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(409); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lançar peça em OS finalizada",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pecas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pecas"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"ordemServicoId\": {{osId}}, \"nome\": \"Correia\", \"codigo\": \"C-1\", \"quantidade\": 1, \"custoUnitario\": 5 }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(409); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Problema 6 - Excluir equipamento com registros vinculados",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipamentos/{{eqId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipamentos",
+                "{{eqId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(409); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });",
+                  "pm.test(\"Informa as contagens de vínculos\", () => { pm.expect(j.detalhes[0].ordensServico).to.be.at.least(1); pm.expect(j.detalhes[0].defeitos).to.be.at.least(1); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Manutenções Preventivas",
+      "description": "Periodicidade, próxima manutenção, alerta de vencidas (Problema 3).",
+      "item": [
+        {
+          "name": "Agendar preventiva já vencida",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/preventivas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "preventivas"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"equipamentoId\": {{eqId}}, \"periodicidadeDias\": 30, \"proximaManutencao\": \"{{ontem}}\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set(\"prevId\", j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Agendar preventiva sem próxima data (calculada)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/preventivas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "preventivas"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"equipamentoId\": {{eqId}}, \"periodicidadeDias\": 30, \"ultimaManutencao\": \"{{hoje}}\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const add = (iso, n) => { const d = new Date(iso + \"T00:00:00Z\"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Próxima = última + periodicidade\", () => { pm.expect(j.proximaManutencao).to.eql(add(pm.collectionVariables.get(\"hoje\"), 30)); });",
+                  "pm.collectionVariables.set(\"prev2Id\", j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Agendar preventiva - periodicidade inválida",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/preventivas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "preventivas"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"equipamentoId\": {{eqId}}, \"periodicidadeDias\": 0 }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(400); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Agendar preventiva - data inválida",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/preventivas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "preventivas"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"equipamentoId\": {{eqId}}, \"periodicidadeDias\": 30, \"proximaManutencao\": \"amanha\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(400); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Agendar preventiva - equipamento inexistente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/preventivas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "preventivas"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"equipamentoId\": 999999,\n  \"periodicidadeDias\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(404); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar preventivas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/preventivas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "preventivas"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"É uma lista\", () => { pm.expect(j).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Problema 3 - Listar preventivas vencidas (alerta)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/preventivas/vencidas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "preventivas",
+                "vencidas"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Inclui a preventiva vencida\", () => { pm.expect(j.some(p => p.id === Number(pm.collectionVariables.get(\"prevId\")))).to.be.true; });",
+                  "pm.test(\"Não inclui a que vence no futuro\", () => { pm.expect(j.some(p => p.id === Number(pm.collectionVariables.get(\"prev2Id\")))).to.be.false; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar preventiva por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/preventivas/{{prevId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "preventivas",
+                "{{prevId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar preventiva - ID inválido",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/preventivas/abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "preventivas",
+                "abc"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(400); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar preventiva - inexistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/preventivas/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "preventivas",
+                "999999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(404); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar preventiva (PUT parcial)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/preventivas/{{prevId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "preventivas",
+                "{{prevId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"periodicidadeDias\": 15\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Periodicidade alterada\", () => { pm.expect(j.periodicidadeDias).to.eql(15); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar preventiva - data inválida",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/preventivas/{{prevId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "preventivas",
+                "{{prevId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"proximaManutencao\": \"amanha\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(400); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar realização da preventiva",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/preventivas/{{prevId}}/realizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "preventivas",
+                "{{prevId}}",
+                "realizar"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const add = (iso, n) => { const d = new Date(iso + \"T00:00:00Z\"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Última = hoje\", () => { pm.expect(j.ultimaManutencao).to.eql(pm.collectionVariables.get(\"hoje\")); });",
+                  "pm.test(\"Próxima = hoje + periodicidade (15 dias)\", () => { pm.expect(j.proximaManutencao).to.eql(add(pm.collectionVariables.get(\"hoje\"), 15)); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Preventiva realizada deixa de ser vencida",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/preventivas/vencidas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "preventivas",
+                "vencidas"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Não está mais na lista\", () => { pm.expect(j.some(p => p.id === Number(pm.collectionVariables.get(\"prevId\")))).to.be.false; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir preventiva",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/preventivas/{{prevId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "preventivas",
+                "{{prevId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Mensagem de sucesso\", () => { pm.expect(j.mensagem).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar preventiva excluída",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/preventivas/{{prevId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "preventivas",
+                "{{prevId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(404); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Erros gerais da API",
+      "description": "Comportamento do roteador.",
+      "item": [
+        {
+          "name": "Rota inexistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rota-inexistente",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rota-inexistente"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(404); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Método não permitido",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pecas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pecas"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 405\", () => pm.response.to.have.status(405));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(405); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "JSON malformado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipamentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipamentos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ nome: \"sem aspas\" ",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Corpo no formato { status, erro, detalhes }\", () => { pm.expect(j.status).to.eql(400); pm.expect(j.erro).to.be.a(\"string\"); pm.expect(j.detalhes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
